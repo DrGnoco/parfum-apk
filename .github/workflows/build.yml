@@ -13,98 +13,313 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Récupération des fichiers
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Installation de Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
+      - name: Installation de Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.5'
 
-      - name: Create Android Project
-        run: python3 -c "
-          import os, shutil
-          os.makedirs('app/src/main/assets', exist_ok=True)
-          os.makedirs('app/src/main/java/ch/indexolfactif/app', exist_ok=True)
-          os.makedirs('app/src/main/res/xml', exist_ok=True)
-          os.makedirs('app/src/main/res/drawable', exist_ok=True)
-          shutil.copy('index.html', 'app/src/main/assets/index.html')
-          if os.path.exists('icon.png'):
-              shutil.copy('icon.png', 'app/src/main/res/drawable/ic_launcher.png')
-          else:
-              open('app/src/main/res/drawable/ic_launcher.xml', 'w').write('''<vector xmlns:android=\"http://schemas.android.com/apk/res/android\" android:width=\"108dp\" android:height=\"108dp\" android:viewportWidth=\"108\" android:viewportHeight=\"108\"><path android:fillColor=\"#141211\" android:pathData=\"M0,0h108v108h-108z\"/><path android:fillColor=\"#8c2d38\" android:pathData=\"M54,14A40,40 0 1,1 54,94A40,40 0 1,1 54,14z\"/><path android:fillColor=\"#1e1b19\" android:pathData=\"M54,18A36,36 0 1,1 54,90A36,36 0 1,1 54,18z\"/><path android:fillColor=\"#d97780\" android:pathData=\"M46,27h16v6h-16z\"/><path android:fillColor=\"#ede8e1\" android:pathData=\"M49,33h10v6h-10z\"/><path android:fillColor=\"#8c2d38\" android:pathData=\"M36,43c0,-2.2 1.8,-4 4,-4h28c2.2,0 4,1.8 4,4v32c0,2.2 -1.8,4 -4,4h-28c-2.2,0 -4,-1.8 -4,-4z\"/><path android:fillColor=\"#ede8e1\" android:pathData=\"M42,51h24v16h-24z\"/></vector>''')
-          open('settings.gradle', 'w').write('rootProject.name = \"IndexOlfactif\"\ninclude \":app\"\n')
-          open('gradle.properties', 'w').write('android.useAndroidX=true\norg.gradle.jvmargs=-Xmx2048m\n')
-          open('build.gradle', 'w').write('buildscript { repositories { google(); mavenCentral() }; dependencies { classpath \"com.android.tools.build:gradle:8.2.2\" } }\nallprojects { repositories { google(); mavenCentral() } }\n')
-          open('app/build.gradle', 'w').write('plugins { id \"com.android.application\" }\nandroid { namespace \"ch.indexolfactif.app\"; compileSdk 34; defaultConfig { applicationId \"ch.indexolfactif.app\"; minSdk 26; targetSdk 34; versionCode 2; versionName \"1.1\" }; compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 } }\ndependencies { implementation \"androidx.appcompat:appcompat:1.6.1\" }\n')
-          open('app/src/main/res/xml/file_paths.xml', 'w').write('<?xml version=\"1.0\" encoding=\"utf-8\"?><paths><cache-path name=\"camera_images\" path=\".\" /></paths>')
-          open('app/src/main/AndroidManifest.xml', 'w').write('''<?xml version=\"1.0\" encoding=\"utf-8\"?><manifest xmlns:android=\"http://schemas.android.com/apk/res/android\"><uses-permission android:name=\"android.permission.INTERNET\" /><uses-permission android:name=\"android.permission.CAMERA\" /><uses-feature android:name=\"android.hardware.camera\" android:required=\"false\" /><application android:allowBackup=\"true\" android:label=\"Index Olfactif\" android:icon=\"@drawable/ic_launcher\" android:roundIcon=\"@drawable/ic_launcher\" android:supportsRtl=\"true\" android:usesCleartextTraffic=\"true\" android:theme=\"@style/Theme.AppCompat.NoActionBar\"><provider android:name=\"androidx.core.content.FileProvider\" android:authorities=\"ch.indexolfactif.app.fileprovider\" android:exported=\"false\" android:grantUriPermissions=\"true\"><meta-data android:name=\"android.support.FILE_PROVIDER_PATHS\" android:resource=\"@xml/file_paths\" /></provider><activity android:name=\".MainActivity\" android:exported=\"true\" android:configChanges=\"orientation|screenSize|keyboardHidden\"><intent-filter><action android:name=\"android.intent.action.MAIN\" /><category android:name=\"android.intent.category.LAUNCHER\" /></intent-filter></activity></application></manifest>''')
-          open('app/src/main/java/ch/indexolfactif/app/MainActivity.java', 'w').write('''package ch.indexolfactif.app;
-          import android.Manifest; import android.app.Activity; import android.content.Intent; import android.content.pm.PackageManager; import android.graphics.Color; import android.net.Uri; import android.os.Bundle; import android.provider.MediaStore; import android.webkit.ValueCallback; import android.webkit.WebChromeClient; import android.webkit.WebSettings; import android.webkit.WebView; import android.webkit.WebViewClient; import androidx.annotation.NonNull; import androidx.appcompat.app.AppCompatActivity; import androidx.core.app.ActivityCompat; import androidx.core.content.ContextCompat; import androidx.core.content.FileProvider; import java.io.File;
+      - name: Génération du projet Android avec Icône
+        run: |
+          mkdir -p app/src/main/assets
+          mkdir -p app/src/main/java/ch/indexolfactif/app
+          mkdir -p app/src/main/res/xml
+          mkdir -p app/src/main/res/drawable
+
+          cp index.html app/src/main/assets/index.html
+
+          # Si vous avez uploadé un fichier icon.png, il l'utilise.
+          # Sinon, il crée automatiquement un logo vectoriel (flacon bordeaux/crème sur fond sombre).
+          if [ -f "icon.png" ]; then
+            cp icon.png app/src/main/res/drawable/ic_launcher.png
+          else
+            cat << 'EOF' > app/src/main/res/drawable/ic_launcher.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+              <!-- Fond sombre expresso -->
+              <path
+                  android:fillColor="#141211"
+                  android:pathData="M0,0h108v108h-108z"/>
+              <!-- Cadre circulaire bordeaux -->
+              <path
+                  android:fillColor="#8c2d38"
+                  android:pathData="M54,14A40,40 0 1,1 54,94A40,40 0 1,1 54,14z"/>
+              <path
+                  android:fillColor="#1e1b19"
+                  android:pathData="M54,18A36,36 0 1,1 54,90A36,36 0 1,1 54,18z"/>
+              <!-- Bouchon et spray du flacon -->
+              <path
+                  android:fillColor="#d97780"
+                  android:pathData="M46,27h16v6h-16z"/>
+              <path
+                  android:fillColor="#ede8e1"
+                  android:pathData="M49,33h10v6h-10z"/>
+              <!-- Corps du flacon -->
+              <path
+                  android:fillColor="#8c2d38"
+                  android:pathData="M36,43c0,-2.2 1.8,-4 4,-4h28c2.2,0 4,1.8 4,4v32c0,2.2 -1.8,4 -4,4h-28c-2.2,0 -4,-1.8 -4,-4z"/>
+              <!-- Étiquette crème centrale -->
+              <path
+                  android:fillColor="#ede8e1"
+                  android:pathData="M42,51h24v16h-24z"/>
+          </vector>
+          EOF
+          fi
+
+          cat << 'EOF' > settings.gradle
+          rootProject.name = "IndexOlfactif"
+          include ':app'
+          EOF
+
+          cat << 'EOF' > gradle.properties
+          android.useAndroidX=true
+          org.gradle.jvmargs=-Xmx2048m
+          EOF
+
+          cat << 'EOF' > build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
+
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'ch.indexolfactif.app'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "ch.indexolfactif.app"
+                  minSdk 26
+                  targetSdk 34
+                  versionCode 2
+                  versionName "1.1"
+              }
+              buildTypes {
+                  debug {
+                      minifyEnabled false
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+          }
+          EOF
+
+          cat << 'EOF' > app/src/main/res/xml/file_paths.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <paths>
+              <cache-path name="camera_images" path="." />
+          </paths>
+          EOF
+
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.CAMERA" />
+              <uses-feature android:name="android.hardware.camera" android:required="false" />
+
+              <application
+                  android:allowBackup="true"
+                  android:label="Index Olfactif"
+                  android:icon="@drawable/ic_launcher"
+                  android:roundIcon="@drawable/ic_launcher"
+                  android:supportsRtl="true"
+                  android:usesCleartextTraffic="true"
+                  android:theme="@style/Theme.AppCompat.NoActionBar">
+
+                  <provider
+                      android:name="androidx.core.content.FileProvider"
+                      android:authorities="ch.indexolfactif.app.fileprovider"
+                      android:exported="false"
+                      android:grantUriPermissions="true">
+                      <meta-data
+                          android:name="android.support.FILE_PROVIDER_PATHS"
+                          android:resource="@xml/file_paths" />
+                  </provider>
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:configChanges="orientation|screenSize|keyboardHidden">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat << 'EOF' > app/src/main/java/ch/indexolfactif/app/MainActivity.java
+          package ch.indexolfactif.app;
+
+          import android.Manifest;
+          import android.app.Activity;
+          import android.content.Intent;
+          import android.content.pm.PackageManager;
+          import android.graphics.Color;
+          import android.net.Uri;
+          import android.os.Bundle;
+          import android.provider.MediaStore;
+          import android.webkit.ValueCallback;
+          import android.webkit.WebChromeClient;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+          import androidx.annotation.NonNull;
+          import androidx.appcompat.app.AppCompatActivity;
+          import androidx.core.app.ActivityCompat;
+          import androidx.core.content.ContextCompat;
+          import androidx.core.content.FileProvider;
+          import java.io.File;
+
           public class MainActivity extends AppCompatActivity {
-              private WebView webView; private ValueCallback<Uri[]> fileUploadCallback; private Uri cameraImageUri;
-              @Override protected void onCreate(Bundle s) {
-                  super.onCreate(s);
-                  getWindow().setStatusBarColor(Color.parseColor(\"#141211\")); getWindow().setNavigationBarColor(Color.parseColor(\"#141211\"));
-                  webView = new WebView(this); setContentView(webView);
-                  WebSettings ws = webView.getSettings(); ws.setJavaScriptEnabled(true); ws.setDomStorageEnabled(true); ws.setAllowFileAccess(true); ws.setAllowContentAccess(true);
-                  webView.setBackgroundColor(Color.parseColor(\"#141211\")); webView.setWebViewClient(new WebViewClient());
+              private WebView webView;
+              private ValueCallback<Uri[]> fileUploadCallback;
+              private Uri cameraImageUri;
+              private static final int FILE_CHOOSER_RESULT_CODE = 1001;
+              private static final int CAMERA_PERMISSION_CODE = 1002;
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  getWindow().setStatusBarColor(Color.parseColor("#141211"));
+                  getWindow().setNavigationBarColor(Color.parseColor("#141211"));
+
+                  webView = new WebView(this);
+                  setContentView(webView);
+
+                  WebSettings settings = webView.getSettings();
+                  settings.setJavaScriptEnabled(true);
+                  settings.setDomStorageEnabled(true);
+                  settings.setDatabaseEnabled(true);
+                  settings.setAllowFileAccess(true);
+                  settings.setAllowContentAccess(true);
+                  settings.setAllowFileAccessFromFileURLs(true);
+                  settings.setAllowUniversalAccessFromFileURLs(true);
+
+                  webView.setBackgroundColor(Color.parseColor("#141211"));
+                  webView.setWebViewClient(new WebViewClient());
                   webView.setWebChromeClient(new WebChromeClient() {
-                      @Override public boolean onShowFileChooser(WebView w, ValueCallback<Uri[]> cb, FileChooserParams p) {
-                          if (fileUploadCallback != null) fileUploadCallback.onReceiveValue(null);
-                          fileUploadCallback = cb;
-                          if (p.isCaptureEnabled()) {
+                      @Override
+                      public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                          if (fileUploadCallback != null) {
+                              fileUploadCallback.onReceiveValue(null);
+                          }
+                          fileUploadCallback = filePathCallback;
+
+                          if (fileChooserParams.isCaptureEnabled()) {
                               if (ContextCompat.checkSelfPermission(MainActivity.this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-                                  ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA}, 1002);
-                              } else openCamera();
-                          } else openGallery();
+                                  ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.CAMERA}, CAMERA_PERMISSION_CODE);
+                              } else {
+                                  openCamera();
+                              }
+                          } else {
+                              openGallery();
+                          }
                           return true;
                       }
                   });
-                  webView.loadUrl(\"file:///android_asset/index.html\");
+
+                  webView.loadUrl("file:///android_asset/index.html");
               }
+
               private void openCamera() {
                   try {
-                      File f = new File(getCacheDir(), \"parfum_\" + System.currentTimeMillis() + \".jpg\");
-                      cameraImageUri = FileProvider.getUriForFile(this, \"ch.indexolfactif.app.fileprovider\", f);
-                      Intent i = new Intent(MediaStore.ACTION_IMAGE_CAPTURE); i.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri); i.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-                      startActivityForResult(i, 1001);
-                  } catch (Exception e) { if (fileUploadCallback != null) { fileUploadCallback.onReceiveValue(null); fileUploadCallback = null; } }
-              }
-              private void openGallery() {
-                  Intent i = new Intent(Intent.ACTION_GET_CONTENT); i.addCategory(Intent.CATEGORY_OPENABLE); i.setType(\"image/*\");
-                  startActivityForResult(Intent.createChooser(i, \"Choisir une photo\"), 1001);
-              }
-              @Override public void onRequestPermissionsResult(int rc, @NonNull String[] p, @NonNull int[] gr) {
-                  super.onRequestPermissionsResult(rc, p, gr);
-                  if (rc == 1002) { if (gr.length > 0 && gr[0] == PackageManager.PERMISSION_GRANTED) openCamera(); else if (fileUploadCallback != null) { fileUploadCallback.onReceiveValue(null); fileUploadCallback = null; } }
-              }
-              @Override protected void onActivityResult(int rc, int res, Intent d) {
-                  super.onActivityResult(rc, res, d);
-                  if (rc == 1001 && fileUploadCallback != null) {
-                      Uri[] r = null;
-                      if (res == Activity.RESULT_OK) { if (d != null && d.getData() != null) r = new Uri[]{d.getData()}; else if (cameraImageUri != null) r = new Uri[]{cameraImageUri}; }
-                      fileUploadCallback.onReceiveValue(r); fileUploadCallback = null; cameraImageUri = null;
+                      File photoFile = new File(getCacheDir(), "parfum_" + System.currentTimeMillis() + ".jpg");
+                      cameraImageUri = FileProvider.getUriForFile(this, "ch.indexolfactif.app.fileprovider", photoFile);
+                      Intent captureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                      captureIntent.putExtra(MediaStore.EXTRA_OUTPUT, cameraImageUri);
+                      captureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+                      startActivityForResult(captureIntent, FILE_CHOOSER_RESULT_CODE);
+                  } catch (Exception e) {
+                      if (fileUploadCallback != null) {
+                          fileUploadCallback.onReceiveValue(null);
+                          fileUploadCallback = null;
+                      }
                   }
               }
-          }''')
-          "
 
-      - name: Build APK
+              private void openGallery() {
+                  Intent contentSelectionIntent = new Intent(Intent.ACTION_GET_CONTENT);
+                  contentSelectionIntent.addCategory(Intent.CATEGORY_OPENABLE);
+                  contentSelectionIntent.setType("image/*");
+                  startActivityForResult(Intent.createChooser(contentSelectionIntent, "Choisir une photo"), FILE_CHOOSER_RESULT_CODE);
+              }
+
+              @Override
+              public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+                  super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+                  if (requestCode == CAMERA_PERMISSION_CODE) {
+                      if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                          openCamera();
+                      } else if (fileUploadCallback != null) {
+                          fileUploadCallback.onReceiveValue(null);
+                          fileUploadCallback = null;
+                      }
+                  }
+              }
+
+              @Override
+              protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+                  super.onActivityResult(requestCode, resultCode, data);
+                  if (requestCode == FILE_CHOOSER_RESULT_CODE) {
+                      if (fileUploadCallback == null) return;
+                      Uri[] results = null;
+                      if (resultCode == Activity.RESULT_OK) {
+                          if (data != null && data.getData() != null) {
+                              results = new Uri[]{data.getData()};
+                          } else if (cameraImageUri != null) {
+                              results = new Uri[]{cameraImageUri};
+                          }
+                      }
+                      fileUploadCallback.onReceiveValue(results);
+                      fileUploadCallback = null;
+                      cameraImageUri = null;
+                  }
+              }
+          }
+          EOF
+
+      - name: Compilation du fichier APK
         run: |
           gradle assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk Index-Olfactif-CHF.apk
 
-      - name: Upload APK to Releases
+      - name: Publication directe du fichier APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.1.${{ github.run_number }}
-          name: "Application Android v1.1.${{ github.run_number }}"
+          name: "Application Android v1.1.${{ github.run_number }} (Avec Icône)"
           files: Index-Olfactif-CHF.apk
-          
